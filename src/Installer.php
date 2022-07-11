@@ -2,6 +2,7 @@
 
 namespace JsonBaby\Installer;
 
+use DirectoryIterator;
 use Nette\PhpGenerator\PhpNamespace;
 
 class Installer
@@ -108,16 +109,22 @@ class Installer
 
     public function generateStub()
     {
+        $path = getcwd() . '/generated';
+        if (is_dir($path)) {
+            $this->deleteContent($path);
+        }
+
         switch ($this->stub) {
             case 'php':
-                $this->generatePhpStub();
+                $this->generatePhpStub($path);
                 break;
             case 'laravel':
+                $this->generateLaravelStub($path);
                 break;
         }
     }
 
-    public function generatePhpStub()
+    public function generatePhpStub($path)
     {
         $namespace = str_replace('\\\\', '\\', $this->namespace);
         if (str_ends_with($namespace, '\\')) {
@@ -128,24 +135,28 @@ class Installer
         $method = $class->addMethod('__construct');
         $method->addPromotedParameter('bar');
 
-        echo <<<EOL
+        $class = <<<EOL
         <?php
 
         $namespace
-
         EOL;
-        
-        echo getcwd();
+
+        $src = __DIR__ . '/stubs/php';
+        $this->recursiveCopy($src, $path);
+        $this->composerJsonStub($path);
+
+        @mkdir($path . '/src');
+        file_put_contents($path . '/src/Foo.php', $class);
     }
 
-    public function generateLaravelStub()
+    public function generateLaravelStub($path)
     {
     }
 
 
-    public function composerJsonStub()
+    public function composerJsonStub($src)
     {
-        file_put_contents('stubs/composer.json', <<<EOL
+        file_put_contents($src . '/composer.json', <<<EOL
         {
             "name": "{$this->packageName}",
             "description": "{$this->packageDescription}",
@@ -189,10 +200,31 @@ class Installer
         EOL);
     }
 
+    public function deleteContent($path)
+    {
+        try {
+            $iterator = new DirectoryIterator($path);
+            foreach ($iterator as $fileinfo) {
+                if ($fileinfo->isDot()) continue;
+                if ($fileinfo->isDir()) {
+                    if ($this->deleteContent($fileinfo->getPathname()))
+                        @rmdir($fileinfo->getPathname());
+                }
+                if ($fileinfo->isFile()) {
+                    @unlink($fileinfo->getPathname());
+                }
+            }
+            rmdir($path);
+        } catch (\Exception $e) {
+            echo $e->getMessage();
+
+            return false;
+        }
+        return true;
+    }
+
     private function recursiveCopy($src, $dst)
     {
-        
-
         $dir = opendir($src);
         @mkdir($dst);
         while (($file = readdir($dir))) {
