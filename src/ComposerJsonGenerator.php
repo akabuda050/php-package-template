@@ -36,7 +36,7 @@ class ComposerJsonGenerator
             },
             "autoload-dev": {
                 "psr-4": {
-                    "{$this->namespace}\\\\Tests": "tests"
+                    "{$this->namespace}\\\\Tests\\\\": "tests"
                 }
             },
             "scripts": {
