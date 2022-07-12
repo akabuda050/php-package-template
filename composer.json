@@ -27,6 +27,9 @@
             "JsonBaby\\Installer\\Tests\\": "tests"
         }
     },
+    "bin": [
+        "bin/installer"
+    ],
     "scripts": {
         "psalm": "vendor/bin/psalm",
         "test": "vendor/bin/phpunit",
