@@ -22,6 +22,7 @@ class Installer
     private $authorName;
     private $authorEmail;
     private $namespace;
+    private $stub;
 
     public function run()
     {
@@ -62,7 +63,7 @@ class Installer
     {
         $packageName = $this->packageName;
         if (!$packageName || strpos($packageName, '/') === false) {
-            $this->namespace = 'ExampleNameSpace\\\\';
+            $this->namespace = 'ExampleNameSpace';
         } else {
             $namespace = array_map(
                 static function ($part): string {
@@ -74,7 +75,50 @@ class Installer
                 explode('/', $packageName)
             );
 
-            $this->namespace = implode('\\\\', $namespace) . '\\\\';
+            $this->namespace = implode('\\\\', $namespace);
+        }
+    }
+
+    public function generateConfigName()
+    {
+        $packageName = $this->packageName;
+        if (!$packageName || strpos($packageName, '/') === false) {
+            return 'example-config';
+        } else {
+            $namespace = array_map(
+                static function ($part): string {
+                    return preg_replace('/[^a-z0-9]/i', '-', $part);
+                },
+                explode('/', $packageName)
+            );
+
+            return $namespace[1];
+        }
+    }
+
+    public function generateServiceProviderName()
+    {
+        $packageName = $this->packageName;
+        if (!$packageName || strpos($packageName, '/') === false) {
+            return 'ExamplePackage';
+        } else {
+            $namespace = array_map(
+                static function ($part): string {
+                    $part = preg_replace('/[^a-z0-9]/i', '-', $part);
+                    $parts = array_map(
+                        static function ($part): string {
+                            $part = ucwords($part);
+                            return $part;
+                        },
+                        explode('-', $part)
+                    );
+
+                    return implode('', $parts);
+                },
+                explode('/', $packageName)
+            );
+
+            return "$namespace[1]";
         }
     }
 
@@ -139,9 +183,10 @@ class Installer
         <?php
 
         $namespace
+
         EOL;
 
-        $src = __DIR__ . '/stubs/php';
+        $src = __DIR__ . '/stubs';
         $this->recursiveCopy($src, $path);
         rename($path . '/github', $path . '/.github');
         $this->composerJsonStub($path);
@@ -152,53 +197,37 @@ class Installer
 
     public function generateLaravelStub($path)
     {
+        $config = $this->generateConfigName();
+        $namespace = str_replace('\\\\', '\\', $this->namespace);
+        if (str_ends_with($namespace, '\\')) {
+            $namespace = rtrim($namespace, '\\');
+        }
+
+        $generalName = $this->generateServiceProviderName();
+        $serviceProvider = (new LaravelClassGenerator($generalName, $namespace, $config))->serviceProvider();
+
+        $src = __DIR__ . '/stubs';
+        $this->recursiveCopy($src, $path);
+        rename($path . '/github', $path . '/.github');
+        $this->composerJsonStub($path);
+
+        @mkdir($path . '/src');
+        file_put_contents($path . "/src/{$generalName}ServiceProvider.php", $serviceProvider);
     }
 
 
     public function composerJsonStub($src)
     {
-        file_put_contents($src . '/composer.json', <<<EOL
-        {
-            "name": "{$this->packageName}",
-            "description": "{$this->packageDescription}",
-            "type": "package",
-            "require": {
-                "php": "^8.0.2"
-            },
-            "require-dev": {
-                "phpunit/phpunit": "^9.5.8",
-                "vimeo/psalm": "5.x-dev"
-            },
-            "license": "MIT",
-            "authors": [
-                {
-                    "name": "{$this->authorName}",
-                    "email": "{$this->authorEmail}"
-                }
-            ],
-            "autoload": {
-                "psr-4": {
-                    "{$this->namespace}": "src"
-                }
-            },
-            "autoload-dev": {
-                "psr-4": {
-                    "{$this->namespace}Tests": "tests"
-                }
-            },
-            "scripts": {
-                "psalm": "vendor/bin/psalm",
-                "test": "vendor/bin/phpunit",
-                "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
-            },
-            "config": {
-                "sort-packages": true
-            },
-            "minimum-stability": "dev",
-            "prefer-stable": true
-        }
+        $composerJsonContent = (new ComposerJsonGenerator(
+            $this->packageName,
+            $this->packageDescription,
+            $this->authorName,
+            $this->authorEmail,
+            $this->namespace,
+            $this->stub
+        ))->generate();
 
-        EOL);
+        file_put_contents($src . '/composer.json', $composerJsonContent);
     }
 
     public function deleteContent($path)
