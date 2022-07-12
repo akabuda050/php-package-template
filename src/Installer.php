@@ -143,6 +143,7 @@ class Installer
 
         $src = __DIR__ . '/stubs/php';
         $this->recursiveCopy($src, $path);
+        rename($path . '/github', $path . '/.github');
         $this->composerJsonStub($path);
 
         @mkdir($path . '/src');
