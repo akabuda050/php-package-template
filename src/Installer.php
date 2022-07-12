@@ -204,7 +204,8 @@ class Installer
         }
 
         $generalName = $this->generateServiceProviderName();
-        $serviceProvider = (new LaravelClassGenerator($generalName, $namespace, $config))->serviceProvider();
+        $laravelClassGenerator = new LaravelClassGenerator($generalName, $namespace, $config);
+        $serviceProvider = $laravelClassGenerator->serviceProvider();
 
         $src = __DIR__ . '/stubs';
         $this->recursiveCopy($src, $path);
@@ -213,6 +214,13 @@ class Installer
 
         @mkdir($path . '/src');
         file_put_contents($path . "/src/{$generalName}ServiceProvider.php", $serviceProvider);
+
+        $installCommand = $laravelClassGenerator->installCommand();
+        @mkdir($path . '/src/Console');
+        file_put_contents($path . "/src/Console/Install{$generalName}Command.php", $installCommand);
+
+        $testCase = $laravelClassGenerator->testCase();
+        file_put_contents($path . "/tests/TestCase.php", $testCase);
     }
 
 
