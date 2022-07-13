@@ -26,6 +26,7 @@ class Installer
 
     public function run()
     {
+        print "Type q on any step to exit.\n";
         foreach ($this->steps as $step) {
             if (method_exists($this, $step)) {
                 call_user_func([$this, $step]);
@@ -36,17 +37,19 @@ class Installer
 
     public function promptStub()
     {
-        $this->stub = $this->readlineTerminal('Enter type (php or laravel): ');
+        $stub = $this->readlineTerminal('Enter type (php or laravel): ');
+        $this->stub = rtrim(trim($stub)) === '' ? 'php' : $stub;
     }
 
     public function promptPackageName()
     {
-        $this->packageName = $this->readlineTerminal('Enter package name (vendor/my-package): ');
+        $packageName = $this->readlineTerminal('Enter package name (vendor/my-package): ');
+        $this->packageName = rtrim(trim($packageName)) === '' ? 'vendor/my-package' : $packageName;
     }
 
     public function promptPackageDescription()
     {
-        $this->packageDescription = $this->readlineTerminal('Enter package name (vendor/my-package): ');
+        $this->packageDescription = $this->readlineTerminal('Enter package description: ');
     }
 
     public function promptAuthorName()
@@ -148,6 +151,11 @@ class Installer
         }
         $line = rtrim(fgets($h), "\r\n");
         fclose($h);
+
+        if($line === 'q') {
+            exit(0);
+        }
+
         return $line;
     }
 
